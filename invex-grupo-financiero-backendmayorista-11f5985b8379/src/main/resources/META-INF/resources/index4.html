@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Crear Usuario</title>
+  <script>
+    // Función para cargar todos los perfiles disponibles en el dropdown al cargar la página
+    window.onload = function () {
+        fetch('/v1/profiles')
+            .then(response => response.json())
+            .then(data => {
+                const selectElement = document.getElementById('profileDropdown');
+                data.forEach(profile => {
+                    const option = document.createElement('option');
+                    option.value = profile.id;
+                    option.textContent = profile.name;
+                    selectElement.appendChild(option);
+                });
+            })
+            .catch(error => {
+                console.error('Error al obtener los perfiles:', error);
+            });
+    }
+
+    function createUser() {
+        const userIdentifier = document.getElementById('userIdentifier').value;
+        const profileId = document.getElementById('profileDropdown').value;
+
+        // Creamos el objeto User con la estructura que espera el backend
+        const userObj = {
+            userIdentifier: userIdentifier,
+            profile: {
+                id: profileId
+            }
+        };
+
+        fetch('/users/create', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(userObj),
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error("Error en la creación del usuario");
+            }
+            return response.json();
+        })
+        .then(data => {
+            alert("Usuario creado exitosamente!");
+        })
+        .catch((error) => {
+            alert('Error:', error);
+        });
+    }
+  </script>
+</head>
+
+<body>
+
+<h2>Crear Usuario</h2>
+
+<div>
+  <label for="userIdentifier">Identificador del usuario:</label>
+  <input type="text" id="userIdentifier" name="userIdentifier" placeholder="nombre@invex.com">
+</div>
+<div>
+  <label for="profileDropdown">Perfil:</label>
+  <select id="profileDropdown">
+    <!-- Las opciones se llenarán dinámicamente al cargar la página -->
+  </select>
+</div>
+<div>
+  <button onclick="createUser()">Crear Usuario</button>
+</div>
+
+</body>
+</html>

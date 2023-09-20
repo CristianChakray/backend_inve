@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Flujos App</title>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+
+        h1 {
+            text-align: center;
+        }
+
+        h2 {
+            margin-top: 20px;
+        }
+
+        select, button {
+            margin-right: 10px;
+            padding: 5px 10px;
+            border-radius: 5px;
+        }
+
+        table {
+            border-collapse: collapse;
+            width: 100%;
+            margin-top: 10px;
+        }
+
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+
+        th {
+            background-color: #f2f2f2;
+        }
+
+        .sortable {
+            cursor: pointer;
+            color: blue;
+        }
+    </style>
+</head>
+
+<body>
+<h1>Flujos App</h1>
+
+<h2>Exportar Flujos</h2>
+<div>
+    <select id="exportDropdown">
+        <option value="">Seleccionar formato...</option>
+        <option value="xls">XLS</option>
+        <option value="txt">TXT</option>
+        <option value="csv">CSV</option>
+    </select>
+    <button id="exportButton">Exportar</button>
+</div>
+
+<h2>Lista de Flujos</h2>
+<div>
+    <input type="text" id="searchInput" placeholder="Buscar flujos...">
+    <button id="searchButton">Buscar</button>
+</div>
+<table>
+    <tr>
+        <th class="sortable" data-sort="nombreFlujo">Flujo</th>
+        <th class="sortable" data-sort="estado">Estado</th>
+        <th>Fecha de última modificación</th>
+        <th>Acciones</th>
+    </tr>
+</table>
+
+<div class="modal" id="asociarPerfilModal">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Asociar Perfil</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label for="nombreFlujo" class="form-label">Flujo</label>
+                    <input type="text" id="nombreFlujo" class="form-control" readonly>
+                </div>
+                <div class="mb-3">
+                    <label for="perfiles" class="form-label">Perfil(es)</label>
+                    <select multiple class="form-select" id="perfiles">
+                    </select>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary">Asociar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<script>
+    let currentSortColumn = "";
+    let currentSortDirection = true;
+
+    function loadFlujos(searchTerm = '') {
+        const baseEndpoint = searchTerm ? `/localizar_especifico?search=${searchTerm}` : '/onboarding/flujos/listar';
+        let endpoint = baseEndpoint;
+
+        if (currentSortColumn) {
+            endpoint = `/onboarding/flujos/ordenar?ascendente=${currentSortDirection}&columna=${currentSortColumn}`;
+        }
+
+        fetch(endpoint)
+            .then(response => response.json())
+            .then(data => {
+                const flujosTable = document.querySelector('table');
+                flujosTable.innerHTML = `
+                    <tr>
+                        <th class="sortable" data-sort="nombreFlujo">Flujo</th>
+                        <th class="sortable" data-sort="estado">Estado</th>
+                        <th>Fecha de última modificación</th>
+                        <th>Acciones</th>
+                    </tr>
+                `;
+                data.forEach(flujos => {
+                    const row = flujosTable.insertRow();
+                    const nombreCell = row.insertCell(0);
+                    const estadoCell = row.insertCell(1);
+                    const fechaCell = row.insertCell(2);
+                    const accionesCell = row.insertCell(3);
+
+                    nombreCell.textContent = flujos.nombreFlujo;
+                    estadoCell.textContent = flujos.estado;
+                    fechaCell.textContent = flujos.fechaUltimaModificacion;
+
+                    const asociarButton = document.createElement('button');
+                    asociarButton.textContent = 'Asociar Perfil';
+                    asociarButton.className = 'btn btn-primary';
+                    asociarButton.setAttribute('data-toggle', 'modal');
+                    asociarButton.setAttribute('data-target', '#asociarPerfilModal');
+                    asociarButton.addEventListener('click', () => {
+                        document.getElementById('nombreFlujo').value = flujos.nombreFlujo;
+                        loadPerfiles();
+                    });
+
+                    accionesCell.appendChild(asociarButton);
+
+                    const desactivarButton = document.createElement('button');
+                    desactivarButton.textContent = 'Desactivar';
+                    desactivarButton.className = 'btn btn-warning ml-2';
+                    desactivarButton.addEventListener('click', () => {
+                        if (confirm("¿Estás seguro de que deseas desactivar este flujo?")) {
+                            fetch(`/onboarding/flujos/${flujos.id}/desactivar`, { method: 'PUT' })
+                                .then(response => response.json())
+                                .then(data => {
+                                    alert(data.message || 'Flujo desactivado con éxito.');
+                                    loadFlujos();
+                                })
+                                .catch(error => {
+                                    console.error('Error al desactivar el flujo:', error);
+                                    alert('Hubo un error al desactivar el flujo. Inténtalo de nuevo.');
+                                });
+                        }
+                    });
+
+                    accionesCell.appendChild(desactivarButton);
+                });
+
+                document.querySelectorAll('.sortable').forEach(header => {
+                    header.addEventListener('click', () => {
+                        const sortColumn = header.getAttribute('data-sort');
+                        if (currentSortColumn === sortColumn) {
+                            currentSortDirection = !currentSortDirection;
+                        } else {
+                            currentSortColumn = sortColumn;
+                            currentSortDirection = true;
+                        }
+                        loadFlujos();
+                    });
+                });
+            })
+            .catch(error => console.error('Error al obtener los flujos:', error));
+    }
+
+    function loadPerfiles() {
+        fetch('/v1/profiles')
+            .then(response => response.json())
+            .then(data => {
+                const perfilesSelect = document.getElementById('perfiles');
+                perfilesSelect.innerHTML = '';
+
+                data.forEach(perfil => {
+                    const option = document.createElement('option');
+                    option.value = perfil.id;
+                    option.textContent = perfil.nombre;
+                    perfilesSelect.appendChild(option);
+                });
+            })
+            .catch(error => console.error('Error al obtener los perfiles:', error));
+    }
+
+    document.getElementById('searchButton').addEventListener('click', () => {
+        const searchTerm = document.getElementById('searchInput').value;
+        loadFlujos(searchTerm);
+    });
+
+    const exportButton = document.getElementById('exportButton');
+    exportButton.addEventListener('click', () => {
+        const selectedFormat = document.getElementById('exportDropdown').value;
+        if (selectedFormat) {
+            window.location.href = `/onboarding/flujos/exportar/${selectedFormat}`;
+        } else {
+            alert('Selecciona un formato de exportación');
+        }
+    });
+
+    document.querySelectorAll('.btn-primary[data-toggle="modal"]').forEach(button => {
+            button.addEventListener('click', () => {
+                loadPerfiles();
+            });
+        });
+
+    loadFlujos();
+</script>
+
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+</body>
+
+</html>

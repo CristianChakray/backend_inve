@@ -1,0 +1,47 @@
+kind: Deployment
+apiVersion: apps/v1
+metadata:
+  name: my-java-quarkus
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: java-quarkus-app
+  template:
+    metadata:
+      labels:
+        app: java-quarkus-app
+    spec:
+      containers:
+        - name: quarkus-invex
+          image: java-quarkus-image:latest
+          env:
+          - name: DB_ORACLE_KIND
+            value: "oracle"
+          - name: DB_ORACLE_USERNAME
+            value: "RIVIUM"
+          - name: DB_ORACLE_PASSWORD
+            value: "Ex7n6KsWmAD2"
+          - name: DB_ORACLE_URL_JDBC
+            value: "jdbc:oracle:thin:@172.19.116.59:1525/DBPTELF"
+          ports:
+            - name: http
+              containerPort: 8081
+              protocol: TCP
+          resources:
+            requests:
+              memory: "100Mi"
+              cpu: "10m"
+---
+kind: Service
+apiVersion: v1
+metadata:
+  name: invex-quakus
+spec:
+ports:
+  - name: http-8081
+    port: 8081
+    protocol: TCP
+    targetPort: 8081
+selector:
+  app: java-quarkus-app

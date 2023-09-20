@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Asociar Perfiles a Flujos</title>
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+</head>
+<body>
+
+<h1>Asociar Perfiles a Flujos</h1>
+
+<!-- Dropdown para seleccionar el flujo -->
+<select id="flujosDropdown">
+  <!-- Las opciones serán llenadas dinámicamente -->
+</select>
+
+<!-- Lista de checkboxes para seleccionar perfiles -->
+<div id="perfilesCheckboxes">
+  <!-- Los checkboxes serán llenados dinámicamente -->
+</div>
+
+<button id="asociarButton">Asociar Perfiles</button>
+
+<script>
+  // Obtener todos los flujos y perfiles al cargar la página
+  $(document).ready(function() {
+      // Obtener todos los flujos
+      $.get('/onboarding/flujos/listar', function(data) {
+          data.forEach(flujo => {
+              $('#flujosDropdown').append(`<option value="${flujo.id}">${flujo.nombreFlujo}</option>`);
+          });
+      });
+
+      // Obtener todos los perfiles
+      $.get('/v1/profiles', function(data) {
+          data.forEach(profile => {
+              $('#perfilesCheckboxes').append(`<input type="checkbox" value="${profile.id}" name="profile">${profile.name}<br>`);
+          });
+      });
+  });
+
+  // Evento al presionar el botón de asociar
+  $('#asociarButton').click(function() {
+      const flujoId = $('#flujosDropdown').val();
+      let perfilIds = [];
+      $('input[name="profile"]:checked').each(function() {
+          perfilIds.push(parseInt($(this).val()));
+      });
+
+      // Realizar la llamada para asociar
+      $.ajax({
+          url: `/onboarding/flujos/${flujoId}/asociarPerfiles`,
+          type: 'PUT',
+          contentType: 'application/json',
+          data: JSON.stringify(perfilIds),
+          success: function(data) {
+              console.log('Respuesta del servidor:', data);
+              alert('Perfiles asociados correctamente!');
+          },
+          error: function(error) {
+              console.error('Error en la solicitud AJAX:', error);
+              alert('Hubo un error al asociar los perfiles. Verifica la consola para más detalles.');
+          }
+      });
+  });
+</script>
+
+</body>
+</html>
